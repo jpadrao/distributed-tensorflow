@@ -6,7 +6,7 @@ parameter server implementation
 
 ### flags
 
-**sync_mode** - synchronous or asynchronous server (default synchronous)
+**sync_mode** - (sync | async) synchronous or asynchronous server (default synchronous)
 
 **n_nodes** - number of workers training the model
 
