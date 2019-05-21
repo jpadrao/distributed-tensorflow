@@ -52,8 +52,7 @@ def run(n_sequence):
 
     x_train = x_train.reshape(60000, 28, 28, 1)
 
-    if FLAGS.split_dataset:
-
+    if FLAGS.split_dataset:  # split dataset
         n_batches = 60000 / FLAGS.batch_size
         n_batches_per_node = n_batches / FLAGS.n_nodes
 
@@ -77,12 +76,10 @@ def run(n_sequence):
     ])
 
     p = pickle.dumps(('start', 'payload'), -1)
+    network.send_msg(sock, p)  # send initial message to parameter server
 
-    network.send_msg(sock, p)
-    p = network.recv_msg(sock)
-
+    p = network.recv_msg(sock)  # wait and receive inital weights
     init_weights = pickle.loads(p)
-
     model.set_weights(init_weights)  # set initial weights
 
     epoch_loss_avg = tfe.metrics.Mean()
@@ -101,14 +98,14 @@ def run(n_sequence):
 
             # Optimize the model
 
-            loss_value, grads_and_vars = grad(model, x, y)
+            loss_value, grads_and_vars = grad(model, x, y)  # calculate gradients
 
             p = pickle.dumps(('train', grads_and_vars), -1)
+            network.send_msg(sock, p)  # send new gradients to parameter server
 
-            network.send_msg(sock, p)
-            p = network.recv_msg(sock)
+            p = network.recv_msg(sock)  # wait and receive new weights from parameter server
             weights = pickle.loads(p)
-            model.set_weights(weights)
+            model.set_weights(weights)  # load new weights to the model
 
             epoch_loss_avg(loss_value)
             epoch_accuracy(tf.argmax(model(x), axis=1, output_type=tf.int32), y)
@@ -158,7 +155,7 @@ if __name__ == '__main__':
 
     for i in range(0, FLAGS.n_nodes):
         p = multiprocessing.Process(target=run, args=[i])
-        p.start()
+        p.start()  # start an independent node
         workers.append(p)
 
     for x in workers:
