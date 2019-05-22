@@ -98,7 +98,8 @@ class Server(threading.Thread):
 
     def run(self):
 
-        start_time = 0
+        global start_time
+        global stoped_clock
 
         while True:
 
@@ -111,6 +112,13 @@ class Server(threading.Thread):
                 if header == 'start':
 
                     print('start')
+
+                    self.barrier.wait()  # wait for all nodes to send start message
+
+                    self.model_lock.acquire()
+                    if start_time == 0:
+                        start_time = time.time()
+                    self.model_lock.release()
 
                     p = pickle.dumps(self.init_weights, -1)
                     self.barrier.wait()  # wait until all workers are ready to receive the initial weights
@@ -145,8 +153,13 @@ class Server(threading.Thread):
                     print('end')
 
                     self.barrier.wait()  # wait for all workers to finish
-                    elapsed_time = time.time() - start_time
-                    print('elapsed time = ' + str(elapsed_time))
+
+                    self.model_lock.acquire()
+                    if not stoped_clock:
+                        elapsed_time = time.time() - start_time
+                        stoped_clock = True
+                        print('elapsed time = ' + str(elapsed_time))
+                    self.model_lock.release()
                     break
 
                 else:
@@ -179,6 +192,8 @@ if __name__ == '__main__':
     model_lock_init = threading.Lock()
     init_weights = model_init.get_weights()
     barrier_init = threading.Barrier(FLAGS.n_nodes)
+    stoped_clock = False
+    start_time = 0
 
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
