@@ -122,7 +122,7 @@ class Server(threading.Thread):
 
                     p = pickle.dumps(self.init_weights, -1)
                     self.barrier.wait()  # wait until all workers are ready to receive the initial weights
-                    start_time = time.time()
+                    # start_time = time.time()
                     network.send_msg(self.socket, p)  # send initial weights to the worker
 
                 elif header == 'train':  # received new gradients
