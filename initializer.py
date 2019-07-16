@@ -142,9 +142,11 @@ if __name__ == '__main__':
 
         elif decentralized_strategy == 'graph':
 
+            raise NotImplementedError("Strategy not implemented yet")
 
+        elif decentralized_strategy == 'custom':
 
-            pass
+            raise NotImplementedError("Strategy not implemented yet")
 
     else:
         raise ValueError('Invalid mode')
