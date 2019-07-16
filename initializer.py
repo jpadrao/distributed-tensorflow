@@ -7,7 +7,6 @@ import tensorflow as tf
 from centralized import client as centralized_client
 from centralized import server as parameter_server
 from decentralized.native import dist_keras
-from decentralized.graph import node
 
 
 def model_fn():  # example function
