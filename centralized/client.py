@@ -42,8 +42,8 @@ def test(model):
     print("Test set accuracy: {:.3%}".format(test_accuracy.result()))
 
 
-def train(batch_size, model_fn=None, dataset_fn=None, num_epochs=1, index=0, n_nodes=0, address='127.0.0.1',
-          cpu_affinity=False):
+def train(batch_size, model_fn=None, dataset_fn=None, num_epochs=1, index=0, n_nodes=0, cpu_affinity=False,
+          server_address='127.0.0.1'):
 
     if cpu_affinity:
         p = psutil.Process()
@@ -56,7 +56,7 @@ def train(batch_size, model_fn=None, dataset_fn=None, num_epochs=1, index=0, n_n
     while not is_connected:  # connect to the parameter server
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((address, 6000))
+            sock.connect((server_address, 6000))
             is_connected = True
         except ConnectionRefusedError:
             time.sleep(1)
@@ -143,4 +143,5 @@ if __name__ == '__main__':
     batch_size = results.batch_size
     server_address = results.server_address
 
-    train(batch_size, model_fn=model_fn, dataset_fn=dataset_fn, index=index, n_nodes=n_nodes, address=server_address)
+    train(batch_size, model_fn=model_fn, dataset_fn=dataset_fn, index=index, n_nodes=n_nodes,
+          server_address=server_address)

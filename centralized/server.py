@@ -136,7 +136,8 @@ class Server(threading.Thread):
         pass
 
 
-def start(sync_mode, model_fn, dataset_fn, n_nodes, optimizer=None, supervisor_address=None, cpu_affinity=False):
+def start(sync_mode, model_fn, dataset_fn, n_nodes, optimizer=None, supervisor_address=None, cpu_affinity=False,
+          server_address='127.0.0.1'):
     global stoped_clock
     global start_time
 
@@ -154,11 +155,11 @@ def start(sync_mode, model_fn, dataset_fn, n_nodes, optimizer=None, supervisor_a
     sup_socket = None
     if supervisor_address is not None:  # try to connect to supervisor processes, not important
         sup_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sup_socket.connect(('127.0.0.1', 4000))
+        sup_socket.connect((server_address, 4000))
 
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    serversocket.bind(('127.0.0.1', 6000))  # bind server address
+    serversocket.bind((server_address, 6000))  # bind server address
     serversocket.listen(50)
 
     print('accepting')

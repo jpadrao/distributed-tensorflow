@@ -47,10 +47,10 @@ def dataset_fn(batch_size, type='train', shard=True, index=0, buffer_size=10000,
     else:
         dataset = tf.data.Dataset.from_tensor_slices((images, labels)).batch(batch_size).shuffle(buffer_size)
 
-    options = tf.data.Options()
-    options.experimental_distribute.auto_shard = False
-
-    dataset = dataset.with_options(options)
+    # options = tf.data.Options()
+    # options.experimental_distribute.auto_shard = False
+    #
+    # dataset = dataset.with_options(options)
 
     return dataset
 
@@ -73,7 +73,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-m', action='store',
                         dest='mode', default=None,
-                        help='training mode: centralized | decentralized')
+                        help='training mode: centralized | decentralized (c/d)')
 
     parser.add_argument('-cs', action='store',
                         dest='centralized_strategy', default=None,
@@ -95,6 +95,18 @@ if __name__ == '__main__':
                         dest="batch_size", type=int, default=100,
                         help='batch size')
 
+    parser.add_argument('-tt', action="store",
+                        dest="task_type", default=None,
+                        help='node task type, only used on centralized parameter server (server/worker)')
+
+    parser.add_argument('-ti', action="store",
+                        dest="task_index", type=int, default=None,
+                        help='node task index, only used on centralized parameter server')
+
+    parser.add_argument('-sa', action="store",
+                        dest="server_address", default='127.0.0.1',
+                        help='server address, only used on centralized parameter server')
+
     parser.add_argument('-ca', action="store",
                         dest="cpu_affinity", type=str2bool, default=False,
                         help='restrain each process to only 1 cpu core (y/n)')
@@ -105,27 +117,47 @@ if __name__ == '__main__':
     centralized_strategy = arg_results.centralized_strategy
     decentralized_strategy = arg_results.decentralized_strategy
     n_nodes = arg_results.n_nodes
-    # degree = arg_results.degree
     batch_size = arg_results.batch_size
+
+    server_address = arg_results.server_address
+    task_type = arg_results.task_type
+    task_index = arg_results.task_index
+
     cpu_affinity = arg_results.cpu_affinity
 
-    if mode == 'centralized':
+    if mode == 'centralized' or mode == 'c':
 
         if centralized_strategy == 'sync' or centralized_strategy == 'async':
 
-            ps = multiprocessing.Process(target=parameter_server.start, args=[centralized_strategy, model_fn,
-                                                                              dataset_fn, n_nodes],
-                                         kwargs={'cpu_affinity': cpu_affinity})
-            ps.start()
+            if task_type is None and task_index is None:  # single machine
 
-            nodes = []
-            for index in range(0, n_nodes):
-                p = multiprocessing.Process(target=centralized_client.train, args=[batch_size],
-                                            kwargs={'index': index, 'model_fn': model_fn, 'dataset_fn': dataset_fn,
-                                                    'cpu_affinity': cpu_affinity})
-                p.start()
-                nodes.append(p)
-    elif mode == 'decentralized':
+                ps = multiprocessing.Process(target=parameter_server.start, args=[centralized_strategy, model_fn,
+                                                                                  dataset_fn, n_nodes],
+                                             kwargs={'cpu_affinity': cpu_affinity})
+                ps.start()
+
+                nodes = []
+                for index in range(0, n_nodes):
+                    p = multiprocessing.Process(target=centralized_client.train, args=[batch_size],
+                                                kwargs={'index': index, 'model_fn': model_fn, 'dataset_fn': dataset_fn,
+                                                        'cpu_affinity': cpu_affinity})
+                    p.start()
+                    nodes.append(p)
+
+            if task_type == 'server':
+
+                parameter_server.start(centralized_strategy, model_fn, dataset_fn, n_nodes, cpu_affinity=cpu_affinity,
+                                       server_address=server_address)
+
+            elif task_type == 'worker' and task_index is not None:
+
+                centralized_client.train(batch_size, index=task_index, model_fn=model_fn, dataset_fn=dataset_fn,
+                                         cpu_affinity=cpu_affinity, server_address=server_address)
+
+        else:
+            raise ValueError('Invalid centralized strategy')
+
+    elif mode == 'decentralized' or mode == 'd':
 
         if decentralized_strategy == 'keras':
 
